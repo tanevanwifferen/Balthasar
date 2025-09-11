@@ -182,7 +182,20 @@ export async function chatWithOpenAI(
     ? `[agent:${currentAgentName}]`
     : `[orchestrator]`;
 
+  // Thread date banner (once, at thread start; never updated during loop)
+  const now = new Date();
+  const timeZone =
+    process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const dateFormatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const dateBanner = `Thread start date: ${dateFormatter.format(now)} (${timeZone})`;
+
   const messages: any[] = [
+    { role: "system", content: dateBanner },
     { role: "system", content: systemWithAgents },
     { role: "user", content: query },
   ];
