@@ -1,0 +1,46 @@
+{
+    "systemPrompt": "You are an AI agent.",
+    "llm": {
+        "provider": "openai",
+        "model": "gpt-5-mini",
+        "api_key": "openai",
+        "temperature": 1
+    },
+    "mcpServers": {
+        "exa-search": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "exa-mcp-server"
+            ],
+            "env": {
+                "EXA_API_KEY": "yeah boi"
+            }
+        },
+        "reclaim": {
+            "command": "node",
+            "args": [
+                "/Users/tanevanwifferen/MCP/reclaim-mcp-server/dist/index.js"
+            ],
+            "env": {
+                "RECLAIM_API_KEY": "api key"
+            }
+        },
+        "gmail": {
+            "command": "npx",
+            "args": [
+                "@gongrzhe/server-gmail-autoauth-mcp"
+            ]
+        },
+        "mcp-server-commands": {
+            "command": "npx",
+            "args": [
+                "mcp-server-commands"
+            ],
+            "requires_confirmation": [
+                "run_command",
+                "run_script"
+            ]
+        }
+    }
+}
