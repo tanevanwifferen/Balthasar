@@ -169,6 +169,9 @@ export async function chatWithOpenAI(
     `Use the call_agent tool to delegate to one of the available agents when helpful.`,
   ].join("\n");
   const systemWithAgents = [system, agentContext].join("\n\n");
+  const scopeLabel = currentAgentName
+    ? `[agent:${currentAgentName}]`
+    : `[orchestrator]`;
 
   const messages: any[] = [
     { role: "system", content: systemWithAgents },
@@ -176,10 +179,13 @@ export async function chatWithOpenAI(
   ];
 
   // Fast-path: if there are no tools at all, run a single-turn completion and return.
+  // Fast-path: no tools available at all — print a single final once (regardless of intermediates setting)
   if (allTools.length === 0) {
     const singlePayload: any = {
       model,
       messages,
+      reasoning: { effort: "low" },
+      text: { verbosity: "medium" },
       temperature: app.llm.temperature ?? 0,
     };
     let response;
@@ -198,19 +204,9 @@ export async function chatWithOpenAI(
       (choice?.message && typeof choice.message.content === "string"
         ? choice.message.content
         : "") || "";
-    if (!opts.noIntermediates) {
-      if (assistantText) {
-        console.log(
-          opts.textOnly ? assistantText : "\n" + assistantText + "\n"
-        );
-      }
-    } else {
-      // Only final output
-      if (assistantText) {
-        console.log(
-          opts.textOnly ? assistantText : "\n" + assistantText + "\n"
-        );
-      }
+    if (assistantText) {
+      const out = `${scopeLabel} ${assistantText}`;
+      console.log(opts.textOnly ? out : "\n" + out + "\n");
     }
     return;
   }
@@ -222,7 +218,13 @@ export async function chatWithOpenAI(
     // Limit to avoid infinite loops in pathological cases
     for (let step = 0; step < 32; step++) {
       // Build payload conditionally: tool_choice is only valid if tools are present
-      const payload: any = { model, messages, temperature };
+      const payload: any = {
+        model,
+        messages,
+        temperature,
+        reasoning: { effort: "low" },
+        text: { verbosity: "medium" },
+      };
       if (allTools.length) {
         payload.tools = allTools as any;
         payload.tool_choice = "auto" as any;
@@ -252,9 +254,8 @@ export async function chatWithOpenAI(
       // Show assistant output if not hiding intermediates
       const assistantText = typeof msg.content === "string" ? msg.content : "";
       if (assistantText && !opts.noIntermediates) {
-        console.log(
-          opts.textOnly ? assistantText : "\n" + assistantText + "\n"
-        );
+        const out = `${scopeLabel} ${assistantText}`;
+        console.log(opts.textOnly ? out : "\n" + out + "\n");
       }
 
       messages.push({
@@ -268,8 +269,10 @@ export async function chatWithOpenAI(
       if (!toolCalls.length || finish === "stop") {
         // Final answer (no tool calls or model indicated stop)
         const finalOut = assistantText || "";
-        if (finalOut) {
-          console.log(opts.textOnly ? finalOut : "\n" + finalOut + "\n");
+        // Policy A: Intermediates-only when enabled — only print final if --no-intermediates is set
+        if (finalOut && opts.noIntermediates) {
+          const out = `${scopeLabel} ${finalOut}`;
+          console.log(opts.textOnly ? out : "\n" + out + "\n");
         }
         break;
       }

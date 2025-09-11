@@ -1,0 +1,34 @@
+{
+  // Reclaim agent: provides access to the Reclaim MCP server for task management.
+  // Grants access to all tools from the "reclaim" MCP server (no additional restrictions here),
+  // so it can add tasks, fetch/list tasks, and update tasks as exposed by the server.
+  "description": "Reclaim task agent with a minimal, safe scope: can create/add tasks, fetch/list tasks, and update tasks. No delete, no timers, no logging, no priority changes.",
+
+  // Per-server tool policy: strict allowlist of safe Reclaim tools.
+  // Only enable add/create, fetch/list/get, and update capabilities.
+  "servers": {
+    "reclaim": {
+      "include_tools": [
+        "reclaim_list_tasks",
+        "reclaim_get_task",
+        "reclaim_create_task",
+        "reclaim_update_task"
+      ],
+      "exclude_tools": [
+        // Additional safety: explicitly deny risky or unneeded tools
+        "reclaim_delete_task",
+        "reclaim_mark_complete",
+        "reclaim_mark_incomplete",
+        "reclaim_add_time",
+        "reclaim_start_timer",
+        "reclaim_stop_timer",
+        "reclaim_log_work",
+        "reclaim_clear_exceptions",
+        "reclaim_prioritize"
+      ]
+    }
+  },
+
+  // No sub-agent delegation for Reclaim by default.
+  "allowedAgents": []
+}

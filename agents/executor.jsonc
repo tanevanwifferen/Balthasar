@@ -1,0 +1,14 @@
+{
+  "description": "Executor agent with command and filesystem capabilities. Does not delegate further.",
+  "servers": {
+    "mcp-server-commands": {
+      // Expose only specific, safer commands that you will confirm at runtime if configured
+      "include_tools": ["run_command", "run_script"]
+    },
+    "fetch": {
+      "include_tools": ["fetch"]
+    }
+  },
+  // Executor does not call sub-agents
+  "allowedAgents": []
+}

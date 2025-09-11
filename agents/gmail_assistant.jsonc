@@ -1,0 +1,51 @@
+{
+  // Executive assistant for Gmail with strictly limited permissions.
+  // Can search and read mail, manage labels, manage filters, draft replies,
+  // and update labels on emails. Cannot send or delete emails.
+  "description": "Gmail executive assistant with limited, safe capabilities: search/read inbox, manage labels and filters, draft responses, and relabel emails. Not allowed to send or delete emails.",
+
+  // Per-server tool policy for this agent.
+  // Server name must match the 'gmail' entry in mcp-server-config.json
+  "servers": {
+    "gmail": {
+      // Allow only the following tools:
+      "include_tools": [
+        // Read/search
+        "search_emails",
+        "read_email",
+
+        // Drafting (no sending)
+        "draft_email",
+
+        // Label management
+        "list_email_labels",
+        "create_label",
+        "update_label",
+        "delete_label",
+        "get_or_create_label",
+
+        // Email updates (relabeling, batching)
+        "modify_email",
+        "batch_modify_emails",
+
+        // Filters management
+        "create_filter",
+        "list_filters",
+        "get_filter",
+        "delete_filter",
+        "create_filter_from_template"
+      ],
+
+      // Explicitly disallow high-risk tools
+      "exclude_tools": [
+        "send_email",          // Do not allow sending
+        "delete_email",        // Do not allow deleting single email
+        "batch_delete_emails", // Do not allow bulk deletes
+        "download_attachment"  // Not required for this agent's scope
+      ]
+    }
+  },
+
+  // Allow delegation to the Reclaim agent for task actions and to the single-email Gmail labeler
+  "allowedAgents": ["gmail_labeler"]
+}

@@ -1,6 +1,6 @@
 # Us
 mcp-server-config.json
-agents/
+# agents/
 
 # Node
 node_modules/

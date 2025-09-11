@@ -1,0 +1,50 @@
+// Gmail Labeler Agent (single-email scope)
+// Purpose: Operates on ONE email/thread at a time. Can read by id, manage labels, and create filters.
+// It can also delegate to the Reclaim agent to create tasks/events as needed.
+// Safer than the main assistant: no sending or deleting; no bulk operations.
+
+{
+  "description": "Single-email Gmail labeler: reads one email/thread by id, manages labels/filters, applies labels, and can delegate to Reclaim for tasks/events. No sending or deleting.",
+
+  // Per-server tool policy for this agent.
+  // Server name must match the 'gmail' entry in mcp-server-config.json
+  "servers": {
+    "gmail": {
+      // Strict allowlist: minimum tools needed for single-email processing
+      "include_tools": [
+        // Read a specific email/thread
+        "read_email",
+
+        // Label management (single email scope)
+        "list_email_labels",
+        "get_or_create_label",
+        "create_label",
+        "update_label",
+
+        // Apply/update labels on a single email/thread
+        "modify_email",
+
+        // Drafting (no sending)
+        "draft_email",
+
+        // Filters/rules for auto-triage
+        "create_filter",
+        "list_filters",
+        "get_filter",
+        "create_filter_from_template"
+      ],
+      "exclude_tools": [
+        "send_email",
+        "delete_email",
+        "batch_delete_emails",
+        "download_attachment",
+        // Exclude searching and batching to keep the scope single-email focused
+        "search_emails",
+        "batch_modify_emails"
+      ]
+    }
+  },
+
+  // Allow delegation to the Reclaim agent so this labeler can create tasks/events
+  "allowedAgents": ["reclaim"]
+}
