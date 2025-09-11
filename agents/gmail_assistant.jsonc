@@ -4,6 +4,9 @@
   // and update labels on emails. Cannot send or delete emails.
   "description": "Gmail executive assistant with limited, safe capabilities: search/read inbox, manage labels and filters, draft responses, and relabel emails. Not allowed to send or delete emails.",
 
+  // Agent-scoped system prompt
+  "systemPrompt": "You are the Gmail Assistant (Level 1). Operate iteratively and process at most 20 INBOX emails per run. You cannot access Gmail or Reclaim tools beyond those explicitly permitted for this agent. Your responsibilities: 1) list latest INBOX emails (up to 20) and list labels, 2) for each returned thread/email, delegate single-email processing to the Gmail Labeler via call_agent with target_agent: \\\"gmail_labeler\\\" passing the thread_id/email_id and any helpful context, 3) aggregate results across all per-email operations. Constraints: - Be strictly idempotent: never duplicate labels, rules, or tasks; prefer reusing existing entities. - Do not send or delete emails. - Do not attempt bulk triage; only fetch and fan out to the labeler. Output: concise structured summary of processed emails and high-level outcomes. Begin by fetching the latest INBOX emails and the label list.",
+
   // Per-server tool policy for this agent.
   // Server name must match the 'gmail' entry in mcp-server-config.json
   "servers": {
@@ -11,29 +14,7 @@
       // Allow only the following tools:
       "include_tools": [
         // Read/search
-        "search_emails",
-        "read_email",
-
-        // Drafting (no sending)
-        "draft_email",
-
-        // Label management
-        "list_email_labels",
-        "create_label",
-        "update_label",
-        "delete_label",
-        "get_or_create_label",
-
-        // Email updates (relabeling, batching)
-        "modify_email",
-        "batch_modify_emails",
-
-        // Filters management
-        "create_filter",
-        "list_filters",
-        "get_filter",
-        "delete_filter",
-        "create_filter_from_template"
+        "search_emails"
       ],
 
       // Explicitly disallow high-risk tools

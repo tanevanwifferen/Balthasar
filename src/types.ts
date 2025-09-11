@@ -57,6 +57,12 @@ export type AgentConfig = {
   description?: string;
 
   /**
+   * Optional per-agent system prompt used when this agent is the active scope.
+   * If empty or omitted, falls back to app.systemPrompt or a default.
+   */
+  systemPrompt?: string;
+
+  /**
    * Map of serverName -> per-server tool policy for this agent.
    * If empty/omitted, the agent has no access to any servers.
    */

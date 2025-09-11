@@ -6,6 +6,9 @@
 {
   "description": "Single-email Gmail labeler: reads one email/thread by id, manages labels/filters, applies labels, and can delegate to Reclaim for tasks/events. No sending or deleting.",
 
+  // Agent-scoped system prompt
+  "systemPrompt": "You are the Gmail Labeler (Level 2). Operate strictly on ONE email/thread at a time. Input will include thread_id/email_id and optionally the current labels list and configuration (snooze_until, default_duration, default_meeting_duration). Tasks: 1) Read the email/thread by id; 2) Classify into one of: Newsletter, Appointment/Meeting, Action Required/Follow-up, Notification, Transaction/Receipt, Personal, Housing, Travel, Finance, Other/Unclear; 3) Prefer existing labels, otherwise create a suitable abstract label; 4) Apply labels to the thread; 5) Create/update filters for newsletters/high-volume sources; 6) For appointments/meetings: extract date/time/timezone and duration (default 30–60m) and delegate via call_agent target_agent=\\\"reclaim\\\" to create an event or time-blocked task; 7) For action-required follow-ups: delegate to Reclaim to create a task with actionable title, notes (include email link), duration (25–45m default), and deadline if implied. Constraints: - Be strictly idempotent; never duplicate labels, rules, or tasks. - Do not send or delete emails. - Keep scope to a single email/thread; no searches or batch ops. Output: concise result of labels applied/created, rules created/updated, and any tasks/events created.",
+
   // Per-server tool policy for this agent.
   // Server name must match the 'gmail' entry in mcp-server-config.json
   "servers": {
@@ -21,8 +24,13 @@
         "create_label",
         "update_label",
 
+        "modify_email",
+
         // Apply/update labels on a single email/thread
         "modify_email",
+
+        // Drafting (no sending)
+        "draft_email",
 
         // Drafting (no sending)
         "draft_email",
@@ -31,6 +39,13 @@
         "create_filter",
         "list_filters",
         "get_filter",
+        "create_filter_from_template",
+
+        // Filters management
+        "create_filter",
+        "list_filters",
+        "get_filter",
+        "delete_filter",
         "create_filter_from_template"
       ],
       "exclude_tools": [

@@ -98,7 +98,6 @@ export async function chatWithOpenAI(
   depth = 0
 ) {
   const { client, model } = makeOpenAI(app as any, opts.model);
-  const system = app.systemPrompt || "You are a helpful assistant.";
 
   // Determine agent scope (tools whitelist per server and allowed sub-agents)
   const { agents } = loadAgents(app as any);
@@ -112,6 +111,14 @@ export async function chatWithOpenAI(
     );
   }
 
+  // Compute system prompt: prefer agent-specific when available, else app/system default
+  const system =
+    currentAgent &&
+    typeof (currentAgent as any).systemPrompt === "string" &&
+    (currentAgent as any).systemPrompt.trim()
+      ? (currentAgent as any).systemPrompt
+      : app.systemPrompt || "You are a helpful assistant.";
+
   // Compute the set of agent names visible/allowable to the model for delegation
   const allAgentNames = Object.keys(agents);
   let visibleAgentNames = allAgentNames;
@@ -122,6 +129,8 @@ export async function chatWithOpenAI(
   ) {
     visibleAgentNames = currentAgent.allowedAgents.filter((n) => n in agents);
   }
+
+  // system prompt computed above
 
   // Prepare tools (connect MCP servers, map tools) with optional agent scope
   const { connected, registry, openAITools } = await setupTools(
@@ -184,8 +193,7 @@ export async function chatWithOpenAI(
     const singlePayload: any = {
       model,
       messages,
-      reasoning: { effort: "low" },
-      text: { verbosity: "medium" },
+      reasoning_effort: "low",
       temperature: app.llm.temperature ?? 0,
     };
     let response;
@@ -222,8 +230,7 @@ export async function chatWithOpenAI(
         model,
         messages,
         temperature,
-        reasoning: { effort: "low" },
-        text: { verbosity: "medium" },
+        reasoning_effort: "low",
       };
       if (allTools.length) {
         payload.tools = allTools as any;
