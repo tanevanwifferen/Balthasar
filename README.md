@@ -194,13 +194,6 @@ Design notes:
 - Config: comment-json for commented JSON compatibility
 - Prompts: simple template substitution (see [src/prompts.ts](src/prompts.ts))
 
-## Roadmap
-
-- Streaming responses and partial tool feedback
-- Lowdb-powered memory store and --show-memories
-- Continue threads/conversations across runs
-- Enhanced telemetry and better error surfaces for MCP process failures
-
 ## Development
 
 - TypeScript config: [tsconfig.json](tsconfig.json)
