@@ -4,6 +4,7 @@
         "provider": "openai",
         "model": "gpt-5-mini",
         "api_key": "openai",
+        "base_url": null,
         "temperature": 1
     },
     "mcpServers": {

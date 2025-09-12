@@ -1,6 +1,10 @@
 # Us
 mcp-server-config.json
-# agents/
+
+# any /agents/* except gmail_* and reclaim
+agents/*
+!agents/gmail_*
+!agents/reclaim*
 
 # Node
 node_modules/

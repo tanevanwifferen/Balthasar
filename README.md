@@ -47,6 +47,7 @@ See the example at: [mcp-server-config-example.json](mcp-server-config-example.j
 
 Notes:
 - OpenAI key is read from config llm.api_key or env OPENAI_API_KEY / LLM_API_KEY.
+- Custom OpenAI base URL can be set via config llm.base_url (e.g. "https://api.openai.example.com") or env OPENAI_BASE_URL / LLM_BASE_URL. If omitted/null, the SDK default is used.
 - MCP servers can be connected via stdio (local child process) or SSE (remote HTTP) using @modelcontextprotocol/sdk.
 - Tools that require confirmation can be specified per server requires_confirmation; confirmations can be bypassed with --no-confirmations (see Safety and confirmations).
 
@@ -59,6 +60,8 @@ Minimal example:
     "provider": "openai",
     "model": "gpt-4o-mini",
     "api_key": "your-api-key",
+    // Optional: override the OpenAI API base URL (or use env OPENAI_BASE_URL / LLM_BASE_URL)
+    "base_url": null,
     "temperature": 0
   },
   "mcpServers": {

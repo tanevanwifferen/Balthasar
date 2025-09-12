@@ -51,6 +51,23 @@ function wrap(s: string, width: number) {
   return lines.join("\n");
 }
 
+// Normalize assistant message content which may be string or array of content parts
+function normalizeAssistantContent(content: any): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part: any) =>
+        typeof part?.text === "string"
+          ? part.text
+          : typeof part === "string"
+            ? part
+            : ""
+      )
+      .join("");
+  }
+  return "";
+}
+
 // -------------------------
 // OpenAI client
 // -------------------------
@@ -73,7 +90,11 @@ export function makeOpenAI(
     );
   }
   const model = overrideModel || app.llm.model || "gpt-4o-mini";
-  const baseURL = app.llm.base_url || undefined;
+  const baseURL =
+    app.llm.base_url ||
+    process.env.OPENAI_BASE_URL ||
+    process.env.LLM_BASE_URL ||
+    undefined;
 
   const client = new OpenAI({
     apiKey,
@@ -97,6 +118,7 @@ export async function chatWithOpenAI(
   opts: CLIOptions,
   depth = 0
 ): Promise<string> {
+  consola.info("input:", query);
   const { client, model } = makeOpenAI(app as any, opts.model);
 
   // Determine agent scope (tools whitelist per server and allowed sub-agents)
@@ -177,7 +199,10 @@ export async function chatWithOpenAI(
     `- Available agents for delegation: ${visibleAgentNames.join(", ") || "(none)"}`,
     `Use the call_agent tool to delegate to one of the available agents when helpful.`,
   ].join("\n");
-  const systemWithAgents = [system, agentContext].join("\n\n");
+
+  const updatedSystem =
+    "Do not ask for permission, and don't ask child agents to ask for permission. This runs headless. You're supposed to make your own decisions.";
+  const systemWithAgents = [system, updatedSystem, agentContext].join("\n\n");
   const scopeLabel = currentAgentName
     ? `[agent:${currentAgentName}]`
     : `[orchestrator]`;
@@ -199,6 +224,8 @@ export async function chatWithOpenAI(
     { role: "system", content: systemWithAgents },
     { role: "user", content: query },
   ];
+  // Track the last assistant message received from the model (for proper returns after tool runs)
+  let lastAssistantText = "";
 
   // Fast-path: if there are no tools at all, run a single-turn completion and return.
   // Fast-path: no tools available at all — print a single final once (regardless of intermediates setting)
@@ -222,15 +249,15 @@ export async function chatWithOpenAI(
     }
     const choice = response.choices?.[0];
     const assistantText =
-      (choice?.message && typeof choice.message.content === "string"
-        ? choice.message.content
+      (choice?.message
+        ? normalizeAssistantContent(choice.message.content)
         : "") || "";
-    let out = assistantText;
     if (assistantText) {
-      out = `${scopeLabel} ${assistantText}`;
-      console.log(opts.textOnly ? out : "\n" + out + "\n");
+      const decorated = `${scopeLabel} ${assistantText}`;
+      console.log(opts.textOnly ? decorated : "\n" + decorated + "\n");
     }
-    return out;
+    // Return the raw assistant text so callers (including parent agents) receive the exact last model message
+    return assistantText;
   }
 
   const requiresConfirmation = new Set(app.tools_requires_confirmation || []);
@@ -272,11 +299,14 @@ export async function chatWithOpenAI(
         return "No message from model";
       }
 
-      // Show assistant output if not hiding intermediates
-      const assistantText = typeof msg.content === "string" ? msg.content : "";
-      if (assistantText && !opts.noIntermediates) {
-        const out = `${scopeLabel} ${assistantText}`;
-        console.log(opts.textOnly ? out : "\n" + out + "\n");
+      // Show assistant output (track last assistant text so parent gets the latest sub-agent message)
+      const assistantText = normalizeAssistantContent(msg.content);
+      if (assistantText) {
+        lastAssistantText = assistantText;
+        if (!opts.noIntermediates) {
+          const out = `${scopeLabel} ${assistantText}`;
+          console.log(opts.textOnly ? out : "\n" + out + "\n");
+        }
       }
 
       messages.push({
@@ -289,13 +319,15 @@ export async function chatWithOpenAI(
       // Terminate if the model didn't request tools OR it signaled completion via finish_reason
       if (!toolCalls.length || finish === "stop") {
         // Final answer (no tool calls or model indicated stop)
-        const finalOut = assistantText || "";
+        // Prefer the current assistant text, else the last non-empty assistant message we received earlier.
+        const finalOut = assistantText || lastAssistantText || "";
         // Policy A: Intermediates-only when enabled — only print final if --no-intermediates is set
-        const out = `${scopeLabel} ${finalOut}`;
+        const decorated = `${scopeLabel} ${finalOut}`;
         if (finalOut && opts.noIntermediates) {
-          console.log(opts.textOnly ? out : "\n" + out + "\n");
+          console.log(opts.textOnly ? decorated : "\n" + decorated + "\n");
         }
-        return out;
+        // Return the raw last model message (not decorated) so parent agent gets the exact content
+        return finalOut;
       }
 
       // Execute each requested tool call, append tool results, then loop
@@ -489,5 +521,6 @@ export async function chatWithOpenAI(
     await Promise.allSettled(connected.map((c) => c.close()));
   }
 
-  return "finished";
+  // If we somehow exit the loop without a stop, return the last assistant message we observed
+  return lastAssistantText || "finished";
 }
