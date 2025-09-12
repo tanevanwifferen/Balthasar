@@ -26,7 +26,7 @@ Iteration flow:
    - labels list
    - configuration if provided: snooze_until, default_duration, default_meeting_duration
    The gmail_labeler will:
-   - Classify the email into one of: Newsletter, Appointment/Meeting, Action Required/Follow-up, Notification (e.g., GitHub/CI), Transaction/Receipt, Personal, Housing, Travel, Finance, Other/Unclear.
+   - Classify the email into one of: Newsletter, Appointment/Meeting, Attention Required/Follow-up, Notification (e.g., GitHub/CI), Transaction/Receipt, Personal, Housing, Travel, Finance, Other/Unclear.
    - Prefer existing labels; if none fits, create a suitable abstract label (e.g., "Notification", "Housing", "Travel").
    - Apply labels to the thread.
    - Create/update sender rules:
@@ -36,12 +36,12 @@ Iteration flow:
      - Extract date/time/timezone and duration (default 30–60 minutes if absent).
      - call_agent (target_agent: "reclaim") to create an event or time-blocked task with:
        - title (concise from subject/sender), notes (include link to email/thread), duration, deadline (if present), snooze_until (config or next business day 09:00 local).
-     - Label and move to "Action Required" or "Scheduled" per workflow.
+     - Label and move to "Attention Required" or "Scheduled" per workflow.
    - For action-required follow-ups (no specific time):
      - call_agent (target_agent: "reclaim") to create a task with:
        - title (actionable verb, e.g., "Reply to {sender}: {subject}"), notes (include email link), duration (25–45 minutes by default), deadline if implied, optional snooze_until.
-     - Move email to "Action Required".
-   - Finalize: archive if fully triaged; otherwise keep in "Action Required".
+     - Move email to "Attention Required".
+   - Finalize: archive if fully triaged; otherwise keep in "Attention Required".
 3) Aggregate results across all per-email operations.
 
 Constraints:
@@ -55,7 +55,7 @@ Output for this run:
   - list of processed emails (subject or id) with outcomes from the labeler
   - labels applied/created and rules created/updated
   - tasks/events created (key fields)
-  - counts moved to "Action Required" vs archived
+  - counts moved to "Attention Required" vs archived
 - Record of any new labels or rules created.
 - Continuation cursor indicating if more emails remain.
 
