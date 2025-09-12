@@ -96,7 +96,7 @@ export async function chatWithOpenAI(
   query: string,
   opts: CLIOptions,
   depth = 0
-) {
+): Promise<string> {
   const { client, model } = makeOpenAI(app as any, opts.model);
 
   // Determine agent scope (tools whitelist per server and allowed sub-agents)
@@ -218,18 +218,19 @@ export async function chatWithOpenAI(
           ? e.message
           : String(e)) || "Unknown error from chat.completions.create";
       consola.error(emsg);
-      return;
+      return emsg;
     }
     const choice = response.choices?.[0];
     const assistantText =
       (choice?.message && typeof choice.message.content === "string"
         ? choice.message.content
         : "") || "";
+    let out = assistantText;
     if (assistantText) {
-      const out = `${scopeLabel} ${assistantText}`;
+      out = `${scopeLabel} ${assistantText}`;
       console.log(opts.textOnly ? out : "\n" + out + "\n");
     }
-    return;
+    return out;
   }
 
   const requiresConfirmation = new Set(app.tools_requires_confirmation || []);
@@ -259,7 +260,7 @@ export async function chatWithOpenAI(
             ? e.message
             : String(e)) || "Unknown error from chat.completions.create";
         consola.error(emsg);
-        break;
+        return emsg;
       }
 
       const choice = response.choices?.[0];
@@ -268,7 +269,7 @@ export async function chatWithOpenAI(
 
       if (!msg) {
         consola.warn("No message from model");
-        break;
+        return "No message from model";
       }
 
       // Show assistant output if not hiding intermediates
@@ -290,11 +291,11 @@ export async function chatWithOpenAI(
         // Final answer (no tool calls or model indicated stop)
         const finalOut = assistantText || "";
         // Policy A: Intermediates-only when enabled — only print final if --no-intermediates is set
+        const out = `${scopeLabel} ${finalOut}`;
         if (finalOut && opts.noIntermediates) {
-          const out = `${scopeLabel} ${finalOut}`;
           console.log(opts.textOnly ? out : "\n" + out + "\n");
         }
-        break;
+        return out;
       }
 
       // Execute each requested tool call, append tool results, then loop
@@ -373,11 +374,16 @@ export async function chatWithOpenAI(
             try {
               // Re-enter chatWithOpenAI with the same config and flags but switching opts.agent to the target
               const nextOpts: CLIOptions = { ...opts, agent: targetName };
-              await chatWithOpenAI(app as any, subQuery, nextOpts, depth + 1);
+              const result = await chatWithOpenAI(
+                app as any,
+                subQuery,
+                nextOpts,
+                depth + 1
+              );
               messages.push({
                 role: "tool",
                 tool_call_id: callId,
-                content: `call_agent completed: ${targetName}`,
+                content: `call_agent completed: ${targetName}\n${result}`,
               });
             } catch (e: any) {
               const emsg = e?.message ?? String(e);
@@ -390,11 +396,16 @@ export async function chatWithOpenAI(
           } else {
             // No target agent: run unscoped (legacy behavior)
             try {
-              await chatWithOpenAI(app as any, subQuery, opts, depth + 1);
+              let out = await chatWithOpenAI(
+                app as any,
+                subQuery,
+                opts,
+                depth + 1
+              );
               messages.push({
                 role: "tool",
                 tool_call_id: callId,
-                content: `call_agent completed (unscoped)`,
+                content: `call_agent completed (unscoped), result:\n${out}`,
               });
             } catch (e: any) {
               const emsg = e?.message ?? String(e);
@@ -477,4 +488,6 @@ export async function chatWithOpenAI(
   } finally {
     await Promise.allSettled(connected.map((c) => c.close()));
   }
+
+  return "finished";
 }

@@ -11,10 +11,34 @@ export type LLMConfig = {
  * Per-agent scoping can further restrict tools via include lists.
  */
 export type ServerConfig = {
-  command: string;
+  /**
+   * stdio transport (default) — start a local MCP server as a child process.
+   * If provided, this transport will be used unless an sse.url is also provided (sse takes precedence).
+   */
+  command?: string;
   args?: string[];
   env?: Record<string, string>;
+
+  /**
+   * Enable/disable this server globally.
+   */
   enabled?: boolean;
+
+  /**
+   * SSE transport — connect to a remote MCP server over HTTP(S) Server-Sent Events.
+   * When sse.url is provided, the client will connect using SSE instead of spawning a process.
+   */
+  sse?: {
+    /**
+     * The full HTTP(S) URL of the MCP server SSE endpoint.
+     * Example: https://your-host.example.com/mcp/sse
+     */
+    url: string;
+    /**
+     * Optional HTTP headers to include (e.g., Authorization).
+     */
+    headers?: Record<string, string>;
+  };
 
   /**
    * Globally exclude tools exposed by this server (applies to all agents).

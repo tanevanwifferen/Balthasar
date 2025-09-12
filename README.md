@@ -47,7 +47,7 @@ See the example at: [mcp-server-config-example.json](mcp-server-config-example.j
 
 Notes:
 - OpenAI key is read from config llm.api_key or env OPENAI_API_KEY / LLM_API_KEY.
-- MCP servers are launched via stdio using @modelcontextprotocol/sdk.
+- MCP servers can be connected via stdio (local child process) or SSE (remote HTTP) using @modelcontextprotocol/sdk.
 - Tools that require confirmation can be specified per server requires_confirmation; confirmations can be bypassed with --no-confirmations (see Safety and confirmations).
 
 Minimal example:
@@ -67,6 +67,43 @@ Minimal example:
       "args": ["-y", "@modelcontextprotocol/server-brave-search"],
       "env": { "BRAVE_API_KEY": "..." },
       "requires_confirmation": ["search"]
+    }
+  }
+}
+```
+
+### SSE transport example
+
+To connect to a remote MCP server over Server-Sent Events (SSE), configure a server with an sse.url (optionally headers). When sse.url is present, it takes precedence over command/args.
+
+```jsonc
+{
+  "mcpServers": {
+    "remote-docs": {
+      // Connect over SSE (no local process spawned)
+      "sse": {
+        "url": "https://example.com/mcp/sse",
+        "headers": {
+          "Authorization": "Bearer YOUR_TOKEN"
+        }
+      },
+      // Optional: still allowed to include excludes or requires_confirmation
+      "exclude_tools": ["dangerous_tool"],
+      "requires_confirmation": ["update_record"]
+    }
+  }
+}
+```
+
+For local child-process servers (stdio), keep using command/args:
+
+```jsonc
+{
+  "mcpServers": {
+    "local-brave": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": { "BRAVE_API_KEY": "..." }
     }
   }
 }
@@ -190,7 +227,7 @@ High-level flow:
 Design notes:
 - CLI: commander, consola, chalk
 - OpenAI: official openai SDK
-- MCP: @modelcontextprotocol/sdk (stdio transport)
+- MCP: @modelcontextprotocol/sdk (stdio and SSE transports)
 - Config: comment-json for commented JSON compatibility
 - Prompts: simple template substitution (see [src/prompts.ts](src/prompts.ts))
 

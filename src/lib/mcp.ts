@@ -5,6 +5,7 @@ import type { AppConfig, ServerConfig, AgentConfig } from "../types.js";
 // MCP SDK (stdio)
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
 // Public types
 export type ConnectedServer = {
@@ -20,26 +21,36 @@ export type ToolRegistryEntry = {
   server: ConnectedServer;
 };
 
-// Connect a single MCP server over stdio
+// Connect a single MCP server over either stdio (child process) or SSE (HTTP)
 export async function connectServer(
   name: string,
   conf: ServerConfig
 ): Promise<ConnectedServer> {
-  const cmd = conf?.command;
-  const args = conf?.args ?? [];
-  if (!cmd || typeof cmd !== "string") {
-    throw new Error(
-      `Invalid MCP server config for "${name}": "command" must be a non-empty string`
-    );
-  }
-  const env = { ...process.env, ...(conf.env ?? {}) };
+  const sseUrl = conf?.sse?.url;
 
-  // Use SDK-managed stdio transport (spawns the process internally)
-  const transport = new StdioClientTransport({
-    command: cmd,
-    args,
-    env,
-  } as any);
+  let transport: any;
+  if (sseUrl && typeof sseUrl === "string") {
+    // SSE transport: connect to remote MCP server via HTTP(S) Server-Sent Events
+    const urlObj = new URL(sseUrl);
+    transport = new SSEClientTransport(urlObj, {
+      headers: conf?.sse?.headers ?? {},
+    } as any);
+  } else {
+    // stdio transport: spawn a local MCP server process
+    const cmd = conf?.command;
+    const args = conf?.args ?? [];
+    if (!cmd || typeof cmd !== "string") {
+      throw new Error(
+        `Invalid MCP server config for "${name}": either provide sse.url or a non-empty "command"`
+      );
+    }
+    const env = { ...process.env, ...(conf.env ?? {}) };
+    transport = new StdioClientTransport({
+      command: cmd,
+      args,
+      env,
+    } as any);
+  }
 
   const client = new Client(
     {
@@ -96,8 +107,12 @@ export async function listAllTools(
   const connected: ConnectedServer[] = [];
   try {
     for (const [name, sconf] of servers) {
-      if (!sconf?.command || typeof sconf.command !== "string") {
-        consola.warn(`Skipping server "${name}": missing or invalid "command"`);
+      const hasSse = !!(sconf as any)?.sse?.url;
+      const hasCmd = !!(sconf?.command && typeof sconf.command === "string");
+      if (!hasSse && !hasCmd) {
+        consola.warn(
+          `Skipping server "${name}": provide either sse.url or a valid "command"`
+        );
         continue;
       }
 
@@ -183,7 +198,9 @@ export async function setupTools(
   const registry = new Map<string, ToolRegistryEntry>();
 
   for (const [name, sconf] of servers) {
-    if (!sconf?.command || typeof sconf.command !== "string") continue;
+    const hasSse = !!(sconf as any)?.sse?.url;
+    const hasCmd = !!(sconf?.command && typeof sconf.command === "string");
+    if (!hasSse && !hasCmd) continue;
     let s: ConnectedServer | undefined;
     try {
       s = await connectServer(name, sconf);
