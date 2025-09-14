@@ -168,9 +168,14 @@ node dist/bin/llm.js --list-prompts
 # List agents discovered from config and agents directories
 node dist/bin/llm.js --list-agents
 
-# List MCP tools across enabled servers (for inspection)
+# Inspect configured MCP servers (does not connect or use them)
+node dist/bin/llm.js --list-mcp-servers
+
+# List MCP tools across enabled servers (for inspection; connects read-only)
 # Note: This does not imply those tools are usable without an agent scope
 node dist/bin/llm.js --list-tools
+# Alias with explicit server grouping label
+node dist/bin/llm.js --list-tools-by-server
 
 # Ask a question (no tools; orchestrator-only)
 node dist/bin/llm.js "What is the capital of France?"
@@ -182,6 +187,73 @@ node dist/bin/llm.js --agent researcher "Find recent news on quantum dot display
 # Syntax: p <name> <template-args...>
 node dist/bin/llm.js p yt https://www.youtube.com/watch?v=NExtKbS1Ljc
 ```
+
+### Agent Generator (create/edit agents safely)
+
+The CLI includes a lightweight "agent generator" to manage agent files without granting tool execution. It can:
+- Read agents from the agents directories and inline config
+- Create a new agent JSONC file
+- Update an existing agent's description/prompt and per-server include/exclude lists
+- List configured MCP servers without connecting
+
+Flags:
+
+```bash
+# List merged agents from inline config + directories
+node dist/bin/llm.js --list-agents-merged
+
+# Create a new agent
+node dist/bin/llm.js --create-agent researcher \
+  --agent-desc "Research assistant" \
+  --agent-prompt "You are a focused research assistant." \
+  --agent-servers-include "brave-search=search,news_search" \
+  --agent-servers-exclude "mcp-server-commands=run_command,run_script"
+
+# Update an existing agent (only provided fields are changed)
+node dist/bin/llm.js --update-agent researcher \
+  --agent-desc "Web research assistant" \
+  --agent-servers-include "brave-search=search"
+```
+
+Server list spec format:
+- --agent-servers-include "serverA=tool1,tool2;serverB=toolX"
+- --agent-servers-exclude "serverA=toolY;serverB=toolZ,toolW"
+
+Validation and safety behavior:
+- If you reference servers not present in mcp-server-config.json, the command fails with a console message instructing you to install/configure those servers first.
+- Agent files are created under, in priority order: app.agentsDir, ./agents, or ~/.llm/agents (directories are created if missing).
+- No MCP tools are executed by these commands; listing tools uses read-only capability discovery.
+
+### AI Agent Generator (use-case driven, creates root orchestrator)
+
+Given a natural-language use case, the CLI can architect a multi-agent setup automatically:
+- Connects to each enabled MCP server and lists tools (read-only)
+- Uses examples from your existing agents as guidance
+- Proposes a set of specialized agents with minimal tool surfaces
+- Always creates a root orchestrator agent that embeds the full use case in its systemPrompt and delegates to the specialized agents
+- Validates that referenced servers and tools exist before writing
+
+Commands:
+
+```bash
+# Dry-run (plan only; prints agent names and target directory)
+node dist/bin/llm.js --generate-from-use-case "Inbox triage with Gmail, summarize top news from RSS, and create calendar tasks" --dry-run
+
+# Generate and write JSONC agent files
+node dist/bin/llm.js --generate-from-use-case "Inbox triage with Gmail, summarize top news from RSS, and create calendar tasks"
+
+# Overwrite conflicting filenames if needed
+node dist/bin/llm.js --generate-from-use-case "..." --force
+```
+
+Generation details:
+- The root agent contains:
+  - description: Root orchestrator
+  - systemPrompt: Full use-case text plus orchestration guidance
+  - servers: none (it delegates; no direct tool use)
+  - allowedAgents: all generated specialized agents
+- Specialized agents each include only the tools they need per server via include_tools/exclude_tools.
+- If any proposed server/tool is unavailable, generation fails with a clear message (no files written). See implementation: [TypeScript.generateAgentsFromUseCase()](src/lib/agentgen.ts:335), discovery via [TypeScript.discoverServerTools()](src/lib/agentgen.ts:250).
 
 Important flags:
 - --agent <name>: activate per-agent tools and behavior

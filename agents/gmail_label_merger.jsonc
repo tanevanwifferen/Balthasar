@@ -1,0 +1,25 @@
+// Agent generated from use case by the AI agent generator.
+// Edit as needed. allowedAgents controls cross-agent delegation.
+{
+  "description": "Execute approved label merges: create/get target label, apply target label to messages with source label(s), and coordinate cleanup.",
+  "systemPrompt": "You perform label merges when given an approved merge plan. For each merge plan: ensure the target label exists (create if needed), apply the target label to all messages/threads that currently have the source label(s) (preserve other labels), verify counts applied, and then notify the cleaner agent to remove the old label once all messages no longer reference it. Operate in small, auditable batches and report progress and any failures. Do not delete old labels yourself; delegate deletion to the cleaner once you confirm no messages retain the old label.",
+  "servers": {
+    "gmail": {
+      "include_tools": [
+        "get_or_create_label",
+        "create_label",
+        "search_emails",
+        "batch_modify_emails",
+        "modify_email",
+        "read_email",
+        "list_email_labels",
+        "update_label"
+      ],
+      "exclude_tools": []
+    }
+  },
+  "allowedAgents": [
+    "gmail_label_cleaner",
+    "gmail_labeler_no_tasks",
+  ]
+}

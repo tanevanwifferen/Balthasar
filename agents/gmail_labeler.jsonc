@@ -23,6 +23,7 @@
         "get_or_create_label",
         "create_label",
         "update_label",
+        "delete_label",
 
         "modify_email",
 
