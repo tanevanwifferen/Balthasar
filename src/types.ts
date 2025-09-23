@@ -87,6 +87,15 @@ export type AgentConfig = {
   systemPrompt?: string;
 
   /**
+   * Optional path to a text/markdown file containing the system prompt.
+   * If provided, its contents will be used as the agent's systemPrompt.
+   * Relative paths are resolved relative to the agent file when loaded from disk,
+   * or relative to process.cwd() when defined inline in app config.
+   * If both systemPrompt and systemPromptFile are provided, the file takes precedence.
+   */
+  systemPromptFile?: string;
+
+  /**
    * Map of serverName -> per-server tool policy for this agent.
    * If empty/omitted, the agent has no access to any servers.
    */

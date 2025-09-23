@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, extname, basename } from "node:path";
+import { join, extname, basename, isAbsolute } from "node:path";
 import { parse as parseCommentJson } from "comment-json";
 import { homedir } from "node:os";
 import consola from "consola";
@@ -47,6 +47,24 @@ function loadAgentsFromDir(dir: string): Record<string, AgentConfig> {
       const raw = readFileSync(p, "utf-8");
       const conf = parseCommentJson(raw, undefined, true) as AgentConfig;
       const name = basename(f, ext);
+
+      // If an external prompt file is specified, resolve relative to the agent file's directory
+      // and load its contents into systemPrompt. The file takes precedence over inline prompt.
+      if (conf && typeof (conf as any).systemPromptFile === "string") {
+        const promptPath = (conf as any).systemPromptFile as string;
+        try {
+          const resolved = isAbsolute(promptPath)
+            ? promptPath
+            : join(dir, promptPath);
+          const promptText = readFileSync(resolved, "utf-8");
+          (conf as any).systemPrompt = promptText;
+        } catch (e: any) {
+          consola.warn(
+            `Agent '${name}': failed to read systemPromptFile '${promptPath}': ${e?.message || e}`
+          );
+        }
+      }
+
       out[name] = conf;
     } catch (e: any) {
       consola.warn(`Skipping agent file ${p}: ${e?.message || e}`);
@@ -74,6 +92,26 @@ export function loadAgents(app: Pick<AppConfig, "agents" | "agentsDir">): {
     ...(app.agents ?? {}),
     ...dirAgents,
   };
+
+  // For inline agents (or any not already resolved), allow systemPromptFile.
+  // Resolve relative to process.cwd() and let file contents take precedence.
+  for (const [agentName, a] of Object.entries(merged)) {
+    const filePath = (a as any)?.systemPromptFile;
+    if (typeof filePath === "string") {
+      try {
+        const resolved = isAbsolute(filePath)
+          ? filePath
+          : join(process.cwd(), filePath);
+        const promptText = readFileSync(resolved, "utf-8");
+        (a as any).systemPrompt = promptText;
+      } catch (e: any) {
+        consola.warn(
+          `Agent '${agentName}': failed to read systemPromptFile '${filePath}': ${e?.message || e}`
+        );
+      }
+    }
+  }
+
   const names = Object.keys(merged).sort();
   return { agents: merged, names };
 }
