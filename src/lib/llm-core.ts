@@ -280,7 +280,7 @@ export async function chatWithOpenAI(
       (choice?.message
         ? normalizeAssistantContent(choice.message.content)
         : "") || "";
-    if (assistantText && isTopLevel) {
+    if (assistantText && isTopLevel && !quiet) {
       const decorated = `${scopeLabel} ${assistantText}`;
       console.log(opts.textOnly ? decorated : "\n" + decorated + "\n");
     }
