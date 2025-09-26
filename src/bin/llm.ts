@@ -6,6 +6,7 @@
 
 import { Command } from "commander";
 import consola from "consola";
+import { readFileSync } from "node:fs";
 import { promptTemplates } from "../prompts.js";
 import type { CLIOptions } from "../lib/config.js";
 import { loadConfig } from "../lib/config.js";
@@ -75,6 +76,10 @@ async function main() {
     )
     .option("--dry-run", "Plan only; do not write files", false)
     .option(
+      "--add-generated-agents-to <path>",
+      "Append generated agent names to file (one per line) after generation"
+    )
+    .option(
       "--agent <name>",
       "Run with a specific agent scope (server/tool whitelist)"
     )
@@ -88,32 +93,43 @@ async function main() {
     .option("--no-tools", "Do not add any tools", false)
     .option("--no-intermediates", "Only print the final message", false)
     .option("--show-memories", "Show user memories", false)
-    .option("--model <model>", "Override the model specified in config");
+    .option("--model <model>", "Override the model specified in config")
+    .option(
+      "--agents <names>",
+      "Comma-separated list of allowed agents for delegation and selection"
+    )
+    .option(
+      "--agents-text-file <path>",
+      "Path to a text file with one agent name per line"
+    );
 
   program.addHelpText(
     "after",
     `
-Examples:
-  llm "What is the capital of France?"
-  llm c "tell me more"                    (continue previous conversation - planned)
-  llm p review                            (use a prompt template)
-  cat file.txt | llm                      (stdin pipeline - planned)
-  llm --list-tools
-  llm --list-tools-by-server              (same as --list-tools; grouped by server)
-  llm --list-prompts
-  llm --list-agents
-  llm --list-mcp-servers                  (show configured servers without connecting)
-  llm --list-agents-merged                (show merged agent names)
-  llm --create-agent researcher \\
-      --agent-desc "Research assistant" \\
-      --agent-prompt "You are a focused research assistant." \\
-      --agent-servers-include "brave-search=search,news_search" \\
-      --agent-servers-exclude "mcp-server-commands=run_command,run_script"
-  llm --update-agent researcher --agent-servers-include "brave-search=search"
-  llm --generate-from-use-case "Daily market news triage and email summaries" --dry-run
-  llm --agent researcher "Find sources on topic X"
-  llm --no-confirmations "search web"     (run tools without confirmation - planned)
-`.trim()
+ Examples:
+   llm "What is the capital of France?"
+   llm c "tell me more"                    (continue previous conversation - planned)
+   llm p review                            (use a prompt template)
+   cat file.txt | llm                      (stdin pipeline - planned)
+   llm --list-tools
+   llm --list-tools-by-server              (same as --list-tools; grouped by server)
+   llm --list-prompts
+   llm --list-agents
+   llm --list-mcp-servers                  (show configured servers without connecting)
+   llm --list-agents-merged                (show merged agent names)
+   llm --create-agent researcher \\
+       --agent-desc "Research assistant" \\
+       --agent-prompt "You are a focused research assistant." \\
+       --agent-servers-include "brave-search=search,news_search" \\
+       --agent-servers-exclude "mcp-server-commands=run_command,run_script"
+   llm --update-agent researcher --agent-servers-include "brave-search=search"
+   llm --generate-from-use-case "Daily market news triage and email summaries" --dry-run
+   llm --generate-from-use-case "Daily market news triage and email summaries" --add-generated-agents-to allowed-agents.txt
+   llm --agent researcher "Find sources on topic X"
+   llm --agents "researcher,writer" "Summarize today's news"
+   llm --agents-text-file allowed-agents.txt "Draft a blog post"
+   llm --no-confirmations "search web"     (run tools without confirmation - planned)
+ `.trim()
   );
 
   program.showHelpAfterError();
@@ -133,6 +149,7 @@ Examples:
       force?: boolean;
       generateFromUseCase?: string;
       dryRun?: boolean;
+      addGeneratedAgentsTo?: string;
     } = command?.opts?.() ?? {};
     const positionalRaw = actionArgs.slice(0, -1);
     // Flatten nested arrays and keep only strings
@@ -142,6 +159,45 @@ Examples:
 
     try {
       const app = loadConfig();
+
+      // Parse agents allowlists from CLI flags (--agents and --agents-text-file)
+      try {
+        const fromList: string[] =
+          typeof (flags as any).agents === "string"
+            ? (flags as any).agents
+                .split(",")
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : Array.isArray((flags as any).agents)
+              ? ((flags as any).agents as string[])
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              : [];
+        const fromFile: string[] =
+          typeof (flags as any).agentsTextFile === "string"
+            ? (() => {
+                try {
+                  const raw = readFileSync(
+                    (flags as any).agentsTextFile,
+                    "utf-8"
+                  );
+                  return raw
+                    .split(/\r?\n/)
+                    .map((l) => l.trim())
+                    .filter((l) => !!l);
+                } catch (e: any) {
+                  consola.warn(
+                    `Failed to read --agents-text-file '${(flags as any).agentsTextFile}': ${e?.message || e}`
+                  );
+                  return [];
+                }
+              })()
+            : [];
+        const merged = Array.from(new Set([...fromList, ...fromFile]));
+        if (merged.length) {
+          (flags as any).agents = merged;
+        }
+      } catch {}
 
       // -------------------------
       // Agent Generator helpers
@@ -217,6 +273,7 @@ Examples:
           {
             force: !!flags.force,
             dryRun: !!flags.dryRun,
+            addToListFile: flags.addGeneratedAgentsTo,
           }
         );
         process.exit(0);

@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import consola from "consola";
 import {
@@ -335,7 +335,7 @@ type GenerationResponse = {
 export async function generateAgentsFromUseCase(
   app: AppConfig,
   useCase: string,
-  opts?: { force?: boolean; dryRun?: boolean }
+  opts?: { force?: boolean; dryRun?: boolean; addToListFile?: string }
 ) {
   if (!useCase || !useCase.trim()) {
     consola.error("generateAgentsFromUseCase: empty use case");
@@ -502,18 +502,18 @@ export async function generateAgentsFromUseCase(
 
   // 4.5) Ensure a root orchestrator agent exists that can run the full task and delegate.
   // It will embed the original use case as its systemPrompt and allow calling all generated agents.
+  const slugify = (s: string) =>
+    (s || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 5)
+      .join("_");
+  const base = slugify(useCase) || "use_case";
+  let rootName = `${base}_root`;
   (function ensureRootAgent() {
     const existingNames = new Set(agents.map((a) => a.name));
-    const slugify = (s: string) =>
-      (s || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .trim()
-        .split(/\s+/)
-        .slice(0, 5)
-        .join("_");
-    const base = slugify(useCase) || "use_case";
-    let rootName = `${base}_root`;
     // Avoid collisions
     let i = 2;
     while (existingNames.has(rootName)) {
@@ -583,6 +583,35 @@ export async function generateAgentsFromUseCase(
     }
     writeFileSync(outPath, `${header}${jsonc}\n`, "utf-8");
     consola.success(`Wrote ${outPath}`);
+  }
+
+  // Optionally append generated agent names to the provided list file
+  if (opts?.addToListFile) {
+    try {
+      const listPath = opts.addToListFile;
+      const dir = dirname(listPath);
+      try {
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      } catch {}
+      const existing = existsSync(listPath)
+        ? readFileSync(listPath, "utf-8")
+        : "";
+      const lines = existing
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+      const set = new Set<string>(lines);
+      set.add(rootName); // ensure root is included
+      const outText = Array.from(set).join("\n") + "\n";
+      writeFileSync(listPath, outText, "utf-8");
+      consola.success(
+        `Appended ${agents.length} generated agent name(s) to ${listPath}`
+      );
+    } catch (e: any) {
+      consola.warn(
+        `Failed to update agent list file '${opts.addToListFile}': ${e?.message || e}`
+      );
+    }
   }
 
   console.log("");

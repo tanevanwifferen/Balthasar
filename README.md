@@ -133,6 +133,28 @@ Run with an agent:
 node dist/bin/llm.js --agent researcher "Find sources on topic X"
 ```
 
+### Agent visibility allowlist (CLI)
+
+You can allow the main orchestrator access to only a subset of agents (mostly the root agents are needed, they can delegate to the sub agents)
+
+- --agents "name1,name2"
+- --agents-text-file <path> (one agent name per line)
+
+Examples:
+```bash
+# Restrict visibility/delegation to two agents
+node dist/bin/llm.js --agents "researcher,writer" "Summarize today's news"
+
+# Load allowlist from a text file (one name per line)
+node dist/bin/llm.js --agents-text-file allowed-agents.txt "Draft a blog post"
+
+# Combine with an active agent scope
+node dist/bin/llm.js --agent researcher --agents "writer,reviewer" "Plan an article"
+```
+
+Notes:
+- Unknown agent names are ignored with a warning.
+- The allowlist constrains the enum for the virtual call_agent tool and the set of visible agents. It does not replace --agent; you still set the active agent scope with --agent as usual.
 Example agent file (JSONC), e.g. ./agents/researcher.jsonc:
 ```jsonc
 {
@@ -244,7 +266,16 @@ node dist/bin/llm.js --generate-from-use-case "Inbox triage with Gmail, summariz
 
 # Overwrite conflicting filenames if needed
 node dist/bin/llm.js --generate-from-use-case "..." --force
+
+# Append generated agent names to an allowlist file
+node dist/bin/llm.js --generate-from-use-case "..." --add-generated-agents-to allowed-agents.txt
 ```
+
+Post-generation allowlist update:
+- When --add-generated-agents-to is provided, all generated agent names (including the root orchestrator) are appended to the given file, one per line.
+- The file is created if missing, names are de-duplicated, and trailing newline ensured.
+- Blank lines are ignored; order is preserved where possible.
+- In --dry-run mode, the list file is not modified.
 
 Generation details:
 - The root agent contains:
@@ -255,8 +286,16 @@ Generation details:
 - Specialized agents each include only the tools they need per server via include_tools/exclude_tools.
 - If any proposed server/tool is unavailable, generation fails with a clear message (no files written). See implementation: [TypeScript.generateAgentsFromUseCase()](src/lib/agentgen.ts:335), discovery via [TypeScript.discoverServerTools()](src/lib/agentgen.ts:250).
 
+Append generated agent names to a list file:
+- Use --add-generated-agents-to <path> together with --generate-from-use-case to update a plain-text allowlist.
+- Behavior: creates parent directories if needed; ignores blank lines; deduplicates names; ensures trailing newline.
+- The list can be used later with --agents-text-file to constrain visible agents during a run.
+
 Important flags:
 - --agent <name>: activate per-agent tools and behavior
+- --agents <names>: comma-separated allowlist restricting which agents are visible/targetable for delegation during this run
+- --agents-text-file <path>: path to a text file with one agent name per line to use as the allowlist
+- --add-generated-agents-to <path>: when used with --generate-from-use-case, append generated agent names to <path> (one per line)
 - --model <model>: override model from config
 - --no-confirmations: bypass requires_confirmation prompts
 - --no-tools: force-disable tools (even under an agent)

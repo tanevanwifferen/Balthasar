@@ -18,6 +18,8 @@ export type CLIOptions = {
   // Agents
   listAgents?: boolean;
   agent?: string;
+  agents?: string[]; // Optional allowlist of agent names, from --agents/--agents-text-file
+  agentsTextFile?: string; // Path to text file with one agent per line
 };
 
 const HOME = process.env.HOME || process.env.USERPROFILE || "";

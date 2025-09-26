@@ -148,12 +148,25 @@ export async function chatWithOpenAI(
   // Compute the set of agent names visible/allowable to the model for delegation
   const allAgentNames = Object.keys(agents);
   let visibleAgentNames = allAgentNames;
+  // Agent-level allowlist
   if (
     currentAgent &&
     Array.isArray(currentAgent.allowedAgents) &&
     currentAgent.allowedAgents.length
   ) {
     visibleAgentNames = currentAgent.allowedAgents.filter((n) => n in agents);
+  } else {
+    // CLI allowlist (--agents/--agents-text-file)
+    if (Array.isArray(opts.agents) && opts.agents.length) {
+      const allow = new Set(opts.agents);
+      const unknown = opts.agents.filter((n) => !(n in agents));
+      if (unknown.length && isTopLevel && !quiet) {
+        consola.warn(
+          `Ignoring unknown agent names from --agents: ${unknown.join(", ")}`
+        );
+      }
+      visibleAgentNames = visibleAgentNames.filter((n) => allow.has(n));
+    }
   }
 
   // system prompt computed above
@@ -169,6 +182,10 @@ export async function chatWithOpenAI(
 
   // Inject a virtual "call_agent" tool that can delegate to a named agent
   // Schema: { query: string; target_agent?: string }
+  // Only include an enum when there are visible agents; some providers reject empty enums.
+  const targetAgentEnumProp = visibleAgentNames.length
+    ? ({ enum: visibleAgentNames } as any)
+    : {};
   const virtualCallAgentTool = {
     type: "function" as const,
     function: {
@@ -185,7 +202,7 @@ export async function chatWithOpenAI(
           target_agent: {
             type: "string",
             description: `Name of the target agent. If omitted, will reuse the current agent scope if any; otherwise runs unscoped. Allowed: ${visibleAgentNames.join(", ") || "(none)"}`,
-            enum: visibleAgentNames,
+            ...targetAgentEnumProp,
           },
         },
         required: ["query"],
@@ -409,6 +426,18 @@ export async function chatWithOpenAI(
                   role: "tool",
                   tool_call_id: callId,
                   content: `call_agent refused: agent '${currentAgentName}' is not allowed to call '${targetName}'`,
+                });
+                continue;
+              }
+            }
+            // Also enforce CLI allowlist (--agents/--agents-text-file), if provided
+            else if (Array.isArray(opts.agents) && opts.agents.length) {
+              const cliAllow = new Set(opts.agents);
+              if (!cliAllow.has(targetName)) {
+                messages.push({
+                  role: "tool",
+                  tool_call_id: callId,
+                  content: `call_agent refused: target agent '${targetName}' not in CLI allowlist (--agents)`,
                 });
                 continue;
               }
