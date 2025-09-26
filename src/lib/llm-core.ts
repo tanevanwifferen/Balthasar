@@ -349,12 +349,12 @@ export async function chatWithOpenAI(
       // - With --no-intermediates (quiet): print only the final turn once.
       // - Without --no-intermediates: print each intermediate turn, but do not reprint the final to avoid duplication.
       if (assistantText && isTopLevel) {
-        if (isFinalTurn) {
+        // not sure what dis does TODO: fix
+        /*if (isFinalTurn) {
           if (quiet) {
             const decorated = `${scopeLabel} ${assistantText}`;
             console.log(opts.textOnly ? decorated : "\n" + decorated + "\n");
-          }
-        } else if (!quiet) {
+        } else*/ if (!isFinalTurn && !quiet) {
           const out = `${scopeLabel} ${assistantText}`;
           console.log(opts.textOnly ? out : "\n" + out + "\n");
         }
@@ -362,7 +362,7 @@ export async function chatWithOpenAI(
 
       if (isFinalTurn) {
         // Return the raw last model message (not decorated) so parent agent gets the exact content
-        return assistantText || lastAssistantText || "";
+        return scopeLabel + " " + (assistantText || lastAssistantText || "");
       }
 
       // Execute each requested tool call, append tool results, then loop
