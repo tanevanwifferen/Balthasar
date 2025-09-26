@@ -312,7 +312,8 @@ Examples:
         queryText = tokens.slice(1).join(" ");
       }
 
-      await chatWithOpenAI(app, queryText, flags);
+      let result = await chatWithOpenAI(app, queryText, flags);
+      console.log(result);
       // Ensure the CLI terminates after the chat completes (avoid lingering stdio handles)
       process.exit(0);
     } catch (err: any) {
