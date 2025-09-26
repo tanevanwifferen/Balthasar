@@ -237,6 +237,8 @@ export async function chatWithOpenAI(
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
   });
   const dateBanner = `Thread start date: ${dateFormatter.format(now)} (${timeZone})`;
 
