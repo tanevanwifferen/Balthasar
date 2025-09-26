@@ -254,7 +254,7 @@ export async function chatWithOpenAI(
     const singlePayload: any = {
       model,
       messages,
-      reasoning_effort: "low",
+      reasoning_effort: "minimal",
       temperature: app.llm.temperature ?? 0,
     };
     let response;
@@ -292,7 +292,7 @@ export async function chatWithOpenAI(
         model,
         messages,
         temperature,
-        reasoning_effort: "low",
+        reasoning_effort: "minimal",
       };
       if (allTools.length) {
         payload.tools = allTools as any;
