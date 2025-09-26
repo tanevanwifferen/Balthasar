@@ -355,14 +355,14 @@ export async function chatWithOpenAI(
             const decorated = `${scopeLabel} ${assistantText}`;
             console.log(opts.textOnly ? decorated : "\n" + decorated + "\n");
         } else*/ if (!isFinalTurn && !quiet) {
-          const out = `${scopeLabel} ${assistantText}`;
+          const out = `${scopeLabel} au au ${assistantText}`;
           console.log(opts.textOnly ? out : "\n" + out + "\n");
         }
       }
 
       if (isFinalTurn) {
         // Return the raw last model message (not decorated) so parent agent gets the exact content
-        return scopeLabel + " " + (assistantText || lastAssistantText || "");
+        return assistantText || lastAssistantText || "";
       }
 
       // Execute each requested tool call, append tool results, then loop
