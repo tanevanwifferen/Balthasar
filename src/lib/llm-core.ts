@@ -119,7 +119,10 @@ export async function chatWithOpenAI(
   depth = 0
 ): Promise<string> {
   const isTopLevel = depth === 0;
-  const quiet = !!opts.noIntermediates;
+  // Support both our intended flag 'noIntermediates' and Commander negated form '--no-intermediates' which sets 'intermediates' to false
+  const quiet = !!(
+    opts.noIntermediates ?? (opts as any).intermediates === false
+  );
   if (!quiet) {
     consola.info("input:", query);
   }
