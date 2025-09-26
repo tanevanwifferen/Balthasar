@@ -252,7 +252,7 @@ export async function chatWithOpenAI(
       (choice?.message
         ? normalizeAssistantContent(choice.message.content)
         : "") || "";
-    if (assistantText) {
+    if (assistantText && (!opts.noIntermediates || depth == 0)) {
       const decorated = `${scopeLabel} ${assistantText}`;
       console.log(opts.textOnly ? decorated : "\n" + decorated + "\n");
     }
@@ -323,7 +323,7 @@ export async function chatWithOpenAI(
         const finalOut = assistantText || lastAssistantText || "";
         // Policy A: Intermediates-only when enabled — only print final if --no-intermediates is set
         const decorated = `${scopeLabel} ${finalOut}`;
-        if (finalOut && opts.noIntermediates) {
+        if (finalOut || (depth != 0 && !opts.noIntermediates)) {
           console.log(opts.textOnly ? decorated : "\n" + decorated + "\n");
         }
         // Return the raw last model message (not decorated) so parent agent gets the exact content

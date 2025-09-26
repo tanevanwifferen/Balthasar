@@ -21,3 +21,5 @@ pnpm-lock.yaml
 
 # OS
 .DS_Store
+
+*.swp
