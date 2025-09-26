@@ -118,7 +118,9 @@ export async function chatWithOpenAI(
   opts: CLIOptions,
   depth = 0
 ): Promise<string> {
-  consola.info("input:", query);
+  const isTopLevel = depth === 0;
+  const quiet = !!opts.noIntermediates;
+  if (isTopLevel && !quiet) consola.info("input:", query);
   const { client, model } = makeOpenAI(app as any, opts.model);
 
   // Determine agent scope (tools whitelist per server and allowed sub-agents)
@@ -128,9 +130,11 @@ export async function chatWithOpenAI(
     ? agents[currentAgentName]
     : undefined;
   if (currentAgentName && !currentAgent) {
-    consola.warn(
-      `Agent '${currentAgentName}' not found. Proceeding without agent scoping.`
-    );
+    if (isTopLevel && !quiet) {
+      consola.warn(
+        `Agent '${currentAgentName}' not found. Proceeding without agent scoping.`
+      );
+    }
   }
 
   // Compute system prompt: prefer agent-specific when available, else app/system default
@@ -252,7 +256,7 @@ export async function chatWithOpenAI(
       (choice?.message
         ? normalizeAssistantContent(choice.message.content)
         : "") || "";
-    if (assistantText && !opts.noIntermediates) {
+    if (assistantText && isTopLevel) {
       const decorated = `${scopeLabel} ${assistantText}`;
       console.log(opts.textOnly ? decorated : "\n" + decorated + "\n");
     }
@@ -295,39 +299,46 @@ export async function chatWithOpenAI(
       const finish = choice?.finish_reason as string | undefined;
 
       if (!msg) {
-        consola.warn("No message from model");
+        if (isTopLevel && !quiet) consola.warn("No message from model");
         return "No message from model";
       }
 
-      // Show assistant output (track last assistant text so parent gets the latest sub-agent message)
+      // Compute assistant output (track last assistant text so parent gets the latest sub-agent message)
       const assistantText = normalizeAssistantContent(msg.content);
       if (assistantText) {
         lastAssistantText = assistantText;
-        if (!opts.noIntermediates) {
-          const out = `${scopeLabel} ${assistantText}`;
-          console.log(opts.textOnly ? out : "\n" + out + "\n");
-        }
       }
 
+      // Add assistant message to the transcript
       messages.push({
         role: "assistant",
         content: msg.content ?? "",
         tool_calls: msg.tool_calls, // preserve tool calls for context
       });
 
+      // Determine if this is a final turn (no tool calls or model indicated stop)
       const toolCalls = msg.tool_calls ?? [];
-      // Terminate if the model didn't request tools OR it signaled completion via finish_reason
-      if (!toolCalls.length || finish === "stop") {
-        // Final answer (no tool calls or model indicated stop)
-        // Prefer the current assistant text, else the last non-empty assistant message we received earlier.
-        const finalOut = assistantText || lastAssistantText || "";
-        // Policy A: Intermediates-only when enabled — only print final if --no-intermediates is set
-        const decorated = `${scopeLabel} ${finalOut}`;
-        if (finalOut || (depth != 0 && !opts.noIntermediates)) {
-          console.log(opts.textOnly ? decorated : "\n" + decorated + "\n");
+      const isFinalTurn = !toolCalls.length || finish === "stop";
+
+      // Printing policy:
+      // - Only print at top-level (depth === 0). Nested agent calls never print directly.
+      // - With --no-intermediates (quiet): print only the final turn once.
+      // - Without --no-intermediates: print each intermediate turn, but do not reprint the final to avoid duplication.
+      if (assistantText && isTopLevel) {
+        if (isFinalTurn) {
+          if (quiet) {
+            const decorated = `${scopeLabel} ${assistantText}`;
+            console.log(opts.textOnly ? decorated : "\n" + decorated + "\n");
+          }
+        } else if (!quiet) {
+          const out = `${scopeLabel} ${assistantText}`;
+          console.log(opts.textOnly ? out : "\n" + out + "\n");
         }
+      }
+
+      if (isFinalTurn) {
         // Return the raw last model message (not decorated) so parent agent gets the exact content
-        return finalOut;
+        return assistantText || lastAssistantText || "";
       }
 
       // Execute each requested tool call, append tool results, then loop
@@ -491,7 +502,7 @@ export async function chatWithOpenAI(
           });
           const rendered = normalizeMcpContentToString(result);
 
-          if (!opts.noIntermediates) {
+          if (isTopLevel && !quiet) {
             // Show tool result chunks as they arrive (non-streamed here)
             console.log(
               opts.textOnly
