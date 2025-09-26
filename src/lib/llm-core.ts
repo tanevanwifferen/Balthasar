@@ -252,7 +252,7 @@ export async function chatWithOpenAI(
       (choice?.message
         ? normalizeAssistantContent(choice.message.content)
         : "") || "";
-    if (assistantText && (!opts.noIntermediates || depth == 0)) {
+    if (assistantText && !opts.noIntermediates) {
       const decorated = `${scopeLabel} ${assistantText}`;
       console.log(opts.textOnly ? decorated : "\n" + decorated + "\n");
     }
