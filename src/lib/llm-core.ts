@@ -120,7 +120,9 @@ export async function chatWithOpenAI(
 ): Promise<string> {
   const isTopLevel = depth === 0;
   const quiet = !!opts.noIntermediates;
-  if (!quiet) consola.info("input:", query);
+  if (!quiet) {
+    consola.info("input:", query);
+  }
   const { client, model } = makeOpenAI(app as any, opts.model);
 
   // Determine agent scope (tools whitelist per server and allowed sub-agents)
