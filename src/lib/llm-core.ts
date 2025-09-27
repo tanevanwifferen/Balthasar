@@ -124,6 +124,7 @@ export async function chatWithOpenAI(
     opts.noIntermediates ?? (opts as any).intermediates === false
   );
   console.log("noIntermediates:", opts.noIntermediates);
+  console.log("intermediates:", (opts as any).intermediates);
   console.log("quiet:", quiet);
   if (!quiet) {
     consola.info("input:", query);
