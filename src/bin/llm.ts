@@ -269,8 +269,7 @@ async function main() {
       }
 
       if (flags.generateFromUseCase) {
-        console.log("generating from query:", queryText);
-        console.log(JSON.stringify(app, null, 2));
+        console.log("generating from query:", flags.generateFromUseCase);
         await agentGenGenerateFromUseCase(
           app as any,
           flags.generateFromUseCase,
