@@ -156,6 +156,7 @@ async function main() {
     const queryParts: string[] = positionalRaw
       .flat(Infinity)
       .filter((v: any) => typeof v === "string");
+    let queryText = queryParts.join(" ").trim();
 
     try {
       const app = loadConfig();
@@ -267,6 +268,7 @@ async function main() {
       }
 
       if (flags.generateFromUseCase) {
+        console.log("generating from query:", queryText);
         await agentGenGenerateFromUseCase(
           app as any,
           flags.generateFromUseCase,
@@ -334,7 +336,6 @@ async function main() {
       }
 
       // Parse query: prompt templates support ("p <name> ...")
-      let queryText = queryParts.join(" ").trim();
       if (!queryText) {
         consola.error("No query provided");
         process.exitCode = 1;
