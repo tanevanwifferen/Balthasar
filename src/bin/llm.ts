@@ -91,7 +91,8 @@ async function main() {
     .option("--force-refresh", "Force refresh of tools capabilities", false)
     .option("--text-only", "Print output as raw text", false)
     .option("--no-tools", "Do not add any tools", false)
-    .option("--no-intermediates", "Only print the final message", false)
+    .option("--intermediates", "Also print intermediates", true)
+    .option("--no-intermediates", "Do not print intermediates", false)
     .option("--show-memories", "Show user memories", false)
     .option("--model <model>", "Override the model specified in config")
     .option(

@@ -11,7 +11,7 @@ export type CLIOptions = {
   forceRefresh?: boolean;
   textOnly?: boolean;
   noTools?: boolean;
-  noIntermediates?: boolean;
+  intermediates?: boolean;
   showMemories?: boolean;
   model?: string;
 
