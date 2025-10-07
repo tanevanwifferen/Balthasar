@@ -340,7 +340,7 @@ export async function chatWithOpenAI(
 
       // Determine if this is a final turn (no tool calls or model indicated stop)
       const toolCalls = msg.tool_calls ?? [];
-      const isFinalTurn = !toolCalls.length || finish === "stop";
+      const isFinalTurn = !toolCalls.length;
 
       // Printing policy:
       // - Only print at top-level (depth === 0). Nested agent calls never print directly.
@@ -538,7 +538,6 @@ export async function chatWithOpenAI(
 
           if (!quiet) {
             // Show tool result chunks as they arrive (non-streamed here)
-            console.log("Tool:", toolName, "args:", rawArgs);
             console.log(
               opts.textOnly
                 ? rendered
