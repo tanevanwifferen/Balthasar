@@ -536,8 +536,9 @@ export async function chatWithOpenAI(
           });
           const rendered = normalizeMcpContentToString(result);
 
-          if (isTopLevel && !quiet) {
+          if (!quiet) {
             // Show tool result chunks as they arrive (non-streamed here)
+            console.log("Tool:", toolName, "args:", rawArgs);
             console.log(
               opts.textOnly
                 ? rendered
