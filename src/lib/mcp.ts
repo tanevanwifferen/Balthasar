@@ -6,6 +6,7 @@ import type { AppConfig, ServerConfig, AgentConfig } from "../types.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 // Public types
 export type ConnectedServer = {
@@ -28,12 +29,13 @@ export async function connectServer(
 ): Promise<ConnectedServer> {
   const sseUrl = conf?.sse?.url;
 
-  let transport: any;
+  let transport: SSEClientTransport | StdioClientTransport;
   if (sseUrl && typeof sseUrl === "string") {
     // SSE transport: connect to remote MCP server via HTTP(S) Server-Sent Events
     const urlObj = new URL(sseUrl);
     transport = new SSEClientTransport(urlObj, {
       headers: conf?.sse?.headers ?? {},
+      requestInit: { headers: conf?.sse?.headers ?? {} },
     } as any);
   } else {
     // stdio transport: spawn a local MCP server process
