@@ -33,10 +33,18 @@ export async function connectServer(
   if (sseUrl && typeof sseUrl === "string") {
     // SSE transport: connect to remote MCP server via HTTP(S) Server-Sent Events
     const urlObj = new URL(sseUrl);
+    const headers = conf?.sse?.headers ?? {};
     transport = new SSEClientTransport(urlObj, {
-      headers: conf?.sse?.headers ?? {},
-      requestInit: { headers: conf?.sse?.headers ?? {} },
-    } as any);
+      fetch: (url, init) => {
+        return fetch(url, {
+          ...init,
+          headers: {
+            ...init?.headers,
+            ...headers,
+          },
+        });
+      },
+    });
   } else {
     // stdio transport: spawn a local MCP server process
     const cmd = conf?.command;
