@@ -189,12 +189,22 @@ export async function chatWithOpenAI(
   const targetAgentEnumProp = visibleAgentNames.length
     ? ({ enum: visibleAgentNames } as any)
     : {};
+
+  const getDescription = (name: string) => {
+    const agent = agents[name];
+    if (agent && typeof agent.description === "string") {
+      return agent.description;
+    }
+    return "No description available.";
+  };
+
   const virtualCallAgentTool = {
     type: "function" as const,
     function: {
       name: "call_agent",
       description:
-        "Delegate by calling another agent with the provided query. Respects per-agent allowedAgents and tool whitelists.",
+        "Delegate by calling another agent with the provided query. Respects per-agent allowedAgents and tool whitelists." +
+        ` Available agents: ${visibleAgentNames.map((n) => `\n- ${n} - ${getDescription(n)}`).join(", ")}`,
       parameters: {
         type: "object",
         properties: {
